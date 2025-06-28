@@ -2,12 +2,12 @@
 # Make sure to replace the placeholders with your actual values.
 
 portainer:
-  url: "https://your-portainer-url.com"    # Replace with your Portainer URL; if restarting a reverse proxy container Portainer uses, use local IP to avoid error 520
-  api_key: "your_api_key_here"             # Replace with your Portainer API key
-  endpoint_id: 1                           # Replace with your Portainer endpoint ID
+  url: "https://your-portainer-url.com" # Replace with your Portainer URL; if restarting a reverse proxy container Portainer uses, use local IP to avoid error 520
+  api_key: "your_api_key_here" # Replace with your Portainer API key
+  endpoint_id: 1 # Replace with your Portainer endpoint ID
 
 container:
-  name: "your-container-name"             # Name or ID of the Docker container to restart
+  name: "your-container-name" # Name or ID of the Docker container to restart
 
 checks:
   urls:
@@ -18,6 +18,8 @@ checks:
     - 502
     - 503
     - 504
+  # Timeout for each health check in seconds
+  timeout: 10
 
 restart:
   # Behavior: "restart" = direct API restart, "stop_start" = stop → delay → start

@@ -9,17 +9,14 @@ def load_config(path=None):
     regardless of the current working directory.
     """
     if path is None:
-        # __file__ is e.g. /app/src/check.py
         base_dir = Path(__file__).resolve().parent.parent
         path = base_dir / "config" / "config.yaml"
     with open(path, 'r') as f:
         return yaml.safe_load(f)
 
-
 def log(msg):
     """Simple timestamped console logger in German date format"""
     print(f"[{time.strftime('%d-%m-%Y %H:%M:%S')}] {msg}")
-
 
 def restart_container(config):
     """
@@ -56,7 +53,6 @@ def restart_container(config):
             log(f"[ERROR] Error during stop/start sequence: stop={r1.status_code}, start={r2.status_code}")
 
     else:
-        # default: direct restart
         log(f"[INFO] Restarting container '{container}' via API...")
         url = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container}/restart"
         r = requests.post(url, headers=headers)
@@ -67,7 +63,6 @@ def restart_container(config):
         else:
             log(f"[ERROR] Restart failed with {r.status_code}: {r.text}")
 
-
 def check_sites(config):
     """
     Checks the URLs specified in the config and determines if an error status is present.
@@ -75,10 +70,11 @@ def check_sites(config):
     """
     urls = config.get('checks', {}).get('urls', [])
     error_codes = config.get('checks', {}).get('error_status_codes', [])
+    timeout = config.get('checks', {}).get('timeout', 5)
     for url in urls:
-        log(f"Checking {url}...")
+        log(f"[INFO] Checking {url}...")
         try:
-            resp = requests.head(url, timeout=5)
+            resp = requests.head(url, timeout=timeout, allow_redirects=True)
             status = resp.status_code
         except requests.RequestException as e:
             log(f"[ERROR] {url} could not be reached: {e}")
@@ -90,21 +86,20 @@ def check_sites(config):
             log(f"[OK] {url} returned status code {status}")
     return False
 
-
 if __name__ == "__main__":
     cfg = load_config()
     interval = cfg.get('interval', {}).get('seconds', 300)
 
-    log("Loaded configuration.")
-    log(f"Starting health check loop: interval set to {interval} seconds.")
+    log("[INFO] Loaded configuration.")
+    log(f"[INFO] Starting health check loop: interval set to {interval} seconds.")
 
     while True:
-        log("Checking configured URLs...")
+        log("[INFO] Checking configured URLs...")
         if check_sites(cfg):
-            log("Error detected in health checks. Proceeding to restart...")
+            log("[ERROR] Error detected in health checks. Proceeding to restart...")
             restart_container(cfg)
         else:
-            log("All URLs OK. No restart required.")
+            log("[OK] All URLs OK. No restart required.")
 
-        log(f"Sleeping for {interval} seconds before next check.")
+        log(f"[INFO] Sleeping for {interval} seconds before next check.")
         time.sleep(interval)
