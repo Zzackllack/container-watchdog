@@ -4,7 +4,7 @@ services:
   container-watchdog:
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: Dockerfile
     volumes:
       - ./config/config.yaml:/app/config/config.yaml:ro
     # Restart the watchdog container automatically if it crashes
