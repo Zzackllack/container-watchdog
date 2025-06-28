@@ -1,54 +1,19 @@
-import yaml
-import requests
+# This is an example configuration file for the Container Watchdog script.
+# Make sure to replace the placeholders with your actual values.
+portainer:
+  url: "https://your-portainer-url.com" # Replace with your Portainer URL, if restarting a reverse proxy container portainer uses, use local IP otherwise the restart will fail with error 520 (Web Server Is Returning an Unknown Error)
+  api_key: "your_api_key_here" # Replace with your Portainer API key
+  endpoint_id: 3 # Replace with your Portainer endpoint ID
 
-def load_config(path):
-    """
-    Loads configuration from a YAML file.
-    We use safe_load to avoid executing untrusted code.
-    """
-    with open(path, "r") as f:
-        return yaml.safe_load(f)
+container:
+  name: "your-container-name"
 
-def restart_container(config):
-    """
-    Restarts the container via the Portainer API.
-    """
-    url = f"{config['portainer']['url']}/api/endpoints/{config['portainer']['endpoint_id']}/docker/containers/{config['container']['name']}/restart"
-    headers = {
-        "Authorization": f"Bearer {config['portainer']['api_key']}"
-    }
-    # Portainer restart endpoint (gateway to the Docker Engine API)
-    response = requests.post(url, headers=headers)
-    if response.status_code == 204:
-        print(f"[OK] Container '{config['container']['name']}' has been restarted.")
-    else:
-        print(f"[ERROR] Restart failed: {response.status_code} {response.text}")
-
-# New function to check websites
-def check_sites(config):
-    """
-    Checks URLs defined in the config and determines if an error status is present.
-    Returns True if an error is found (restart needed), otherwise False.
-    """
-    error_status_codes = config['checks']['error_status_codes']
-    restart_needed = False
-    for url in config['checks']['urls']:
-        try:
-            response = requests.get(url)
-            status = response.status_code
-            if status in error_status_codes:
-                print(f"[ERROR] {url} returned status code {status}")
-                restart_needed = True
-            else:
-                print(f"[OK] {url} returned status code {status}")
-        except requests.RequestException as e:
-            print(f"[ERROR] Could not reach {url}: {e}")
-            restart_needed = True
-    return restart_needed
-
-if __name__ == "__main__":
-    config = load_config("config/example.config.yaml")
-    if check_sites(config):
-        restart_container(config)
-    else:
-        print("All URLs OK, no restart required.")
+checks:
+  urls:
+    - "https://urls-to-check.com"
+    - "https://you-can-add-multiple.com"
+  # All http status codes listed here will trigger a restart of the container
+  error_status_codes:
+    - 502
+    - 503
+    - 504
