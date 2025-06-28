@@ -6,7 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile
     working_dir: /app
-    command: python src/check.py
     volumes:
       - ./config/config.yaml:/app/config/config.yaml:ro
     # Restart the watchdog container automatically if it crashes

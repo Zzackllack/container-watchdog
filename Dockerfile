@@ -14,4 +14,4 @@ COPY src ./src
 RUN pip install --no-cache-dir requests pyyaml
 
 # Default command
-CMD ["python", "src/check.py"]
+ENTRYPOINT [ "python3", "src/check.py" ]
