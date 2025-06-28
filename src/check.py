@@ -71,19 +71,34 @@ def check_sites(config):
     urls = config.get('checks', {}).get('urls', [])
     error_codes = config.get('checks', {}).get('error_status_codes', [])
     timeout = config.get('checks', {}).get('timeout', 5)
+
     for url in urls:
-        log(f"[INFO] Checking {url}...")
+        log(f"[INFO] Checking {url} with timeout {timeout}s...")
         try:
             resp = requests.head(url, timeout=timeout, allow_redirects=True)
-            status = resp.status_code
+        except requests.exceptions.Timeout as e:
+            log(f"[WARN] Timeout after {timeout}s waiting for {url}. Beginning countdown to failure.")
+            for remaining in range(timeout, 0, -1):
+                log(f"[WARN] {remaining}s left before marking {url} as failed...")
+                time.sleep(1)
+            log(f"[ERROR] No response from {url} after timeout and countdown.")
+            return True
         except requests.RequestException as e:
             log(f"[ERROR] {url} could not be reached: {e}")
             return True
+
+        # Log any redirects
+        for hist in resp.history:
+            location = hist.headers.get('Location', '<unknown>')
+            log(f"[INFO] Redirect: {hist.status_code} {hist.url} -> {location}")
+        # Final response
+        status = resp.status_code
+        log(f"[OK] Final URL: {resp.url} returned status code {status}")
+
         if status in error_codes:
-            log(f"[ERROR] {url} returned status code {status}")
+            log(f"[ERROR] {resp.url} returned error code {status}")
             return True
-        else:
-            log(f"[OK] {url} returned status code {status}")
+
     return False
 
 if __name__ == "__main__":
