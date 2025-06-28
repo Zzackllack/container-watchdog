@@ -1,12 +1,17 @@
 import time
 import requests
 import yaml
+from pathlib import Path
 
-def load_config(path='config/config.yaml'):
+def load_config(path=None):
     """
-    Loads the configuration from a YAML file.
-    We use safe_load to avoid untrusted code execution.
+    Loads the configuration from a YAML file next to the project root,
+    regardless of the current working directory.
     """
+    if path is None:
+        # __file__ is e.g. /app/src/check.py
+        base_dir = Path(__file__).resolve().parent.parent
+        path = base_dir / "config" / "config.yaml"
     with open(path, 'r') as f:
         return yaml.safe_load(f)
 
