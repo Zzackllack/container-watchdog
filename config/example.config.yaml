@@ -1,0 +1,54 @@
+import yaml
+import requests
+
+def load_config(path):
+    """
+    Loads configuration from a YAML file.
+    We use safe_load to avoid executing untrusted code.
+    """
+    with open(path, "r") as f:
+        return yaml.safe_load(f)
+
+def restart_container(config):
+    """
+    Restarts the container via the Portainer API.
+    """
+    url = f"{config['portainer']['url']}/api/endpoints/{config['portainer']['endpoint_id']}/docker/containers/{config['container']['name']}/restart"
+    headers = {
+        "Authorization": f"Bearer {config['portainer']['api_key']}"
+    }
+    # Portainer restart endpoint (gateway to the Docker Engine API)
+    response = requests.post(url, headers=headers)
+    if response.status_code == 204:
+        print(f"[OK] Container '{config['container']['name']}' has been restarted.")
+    else:
+        print(f"[ERROR] Restart failed: {response.status_code} {response.text}")
+
+# New function to check websites
+def check_sites(config):
+    """
+    Checks URLs defined in the config and determines if an error status is present.
+    Returns True if an error is found (restart needed), otherwise False.
+    """
+    error_status_codes = config['checks']['error_status_codes']
+    restart_needed = False
+    for url in config['checks']['urls']:
+        try:
+            response = requests.get(url)
+            status = response.status_code
+            if status in error_status_codes:
+                print(f"[ERROR] {url} returned status code {status}")
+                restart_needed = True
+            else:
+                print(f"[OK] {url} returned status code {status}")
+        except requests.RequestException as e:
+            print(f"[ERROR] Could not reach {url}: {e}")
+            restart_needed = True
+    return restart_needed
+
+if __name__ == "__main__":
+    config = load_config("config/example.config.yaml")
+    if check_sites(config):
+        restart_container(config)
+    else:
+        print("All URLs OK, no restart required.")
