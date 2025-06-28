@@ -24,3 +24,7 @@ restart:
   behavior: "stop_start"
   # Delay in seconds between stop and start (only for stop_start mode)
   delay: 10
+
+interval:
+  # Frequency of health checks in seconds
+  seconds: 300

@@ -12,7 +12,7 @@ def load_config(path='config/config.yaml'):
 
 
 def log(msg):
-    """Simple timestamped console logger in german format"""
+    """Simple timestamped console logger in German date format"""
     print(f"[{time.strftime('%d-%m-%Y %H:%M:%S')}] {msg}")
 
 
@@ -88,11 +88,18 @@ def check_sites(config):
 
 if __name__ == "__main__":
     cfg = load_config()
-    log("Loaded configuration.")
-    log("Checking configured URLs...")
+    interval = cfg.get('interval', {}).get('seconds', 300)
 
-    if check_sites(cfg):
-        log("Error detected in health checks. Proceeding to restart...")
-        restart_container(cfg)
-    else:
-        log("All URLs OK. No restart required.")
+    log("Loaded configuration.")
+    log(f"Starting health check loop: interval set to {interval} seconds.")
+
+    while True:
+        log("Checking configured URLs...")
+        if check_sites(cfg):
+            log("Error detected in health checks. Proceeding to restart...")
+            restart_container(cfg)
+        else:
+            log("All URLs OK. No restart required.")
+
+        log(f"Sleeping for {interval} seconds before next check.")
+        time.sleep(interval)
