@@ -1,12 +1,8 @@
-version: "3.8"
-
 services:
   container-watchdog:
     build:
       context: .
-      dockerfile: Dockerfile
-    working_dir: /app
+      dockerfile: docker/Dockerfile
     volumes:
       - ./config/config.yaml:/app/config/config.yaml:ro
-    # Restart the watchdog container automatically if it crashes
     restart: unless-stopped
