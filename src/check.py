@@ -14,92 +14,96 @@ def load_config(path=None):
     with open(path, 'r') as f:
         return yaml.safe_load(f)
 
+
 def log(msg):
     """Simple timestamped console logger in German date format"""
     print(f"[{time.strftime('%d-%m-%Y %H:%M:%S')}] {msg}")
 
-def restart_container(config):
+
+def restart_container(config, container_name):
     """
-    Executes the restart behavior defined in config:
+    Restart the specified container using the behavior in config:
       - "restart": direct API restart
       - "stop_start": stop then start with optional delay
     """
     api_url     = config['portainer']['url']
     api_key     = config['portainer']['api_key']
     endpoint_id = config['portainer']['endpoint_id']
-    container   = config['container']['name']
     behavior    = config.get('restart', {}).get('behavior', 'restart')
     delay       = config.get('restart', {}).get('delay', 5)
 
     headers = {'X-API-Key': api_key}
 
     if behavior == 'stop_start':
-        log(f"[INFO] Stopping container '{container}' via API...")
-        url_stop = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container}/stop"
+        log(f"[INFO] Stopping container '{container_name}' via API...")
+        url_stop = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container_name}/stop"
         r1 = requests.post(url_stop, headers=headers)
-        log(f"[INFO] Stop response: {r1.status_code}")
+        log(f"[INFO] Stop response for '{container_name}': {r1.status_code}")
 
-        log(f"[INFO] Waiting {delay}s before starting container...")
+        log(f"[INFO] Waiting {delay}s before starting container '{container_name}'...")
         time.sleep(delay)
 
-        log(f"[INFO] Starting container '{container}' via API...")
-        url_start = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container}/start"
+        log(f"[INFO] Starting container '{container_name}' via API...")
+        url_start = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container_name}/start"
         r2 = requests.post(url_start, headers=headers)
-        log(f"[INFO] Start response: {r2.status_code}")
+        log(f"[INFO] Start response for '{container_name}': {r2.status_code}")
 
         if r1.status_code in (204, 304) and r2.status_code in (204, 304):
-            log(f"[INFO] Container '{container}' stopped and started successfully.")
+            log(f"[INFO] Container '{container_name}' restarted successfully via stop/start.")
         else:
-            log(f"[ERROR] Error during stop/start sequence: stop={r1.status_code}, start={r2.status_code}")
+            log(f"[ERROR] Stop/start failed for '{container_name}': stop={r1.status_code}, start={r2.status_code}")
 
     else:
-        log(f"[INFO] Restarting container '{container}' via API...")
-        url = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container}/restart"
+        log(f"[INFO] Restarting container '{container_name}' via API...")
+        url = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container_name}/restart"
         r = requests.post(url, headers=headers)
-        log(f"[INFO] Restart response: {r.status_code}")
+        log(f"[INFO] Restart response for '{container_name}': {r.status_code}")
 
         if r.status_code == 204:
-            log(f"[INFO] Container '{container}' was restarted successfully.")
+            log(f"[INFO] Container '{container_name}' restarted successfully.")
         else:
-            log(f"[ERROR] Restart failed with {r.status_code}: {r.text}")
+            log(f"[ERROR] Restart failed for '{container_name}': {r.status_code} {r.text}")
 
 def check_sites(config):
     """
-    Checks the URLs specified in the config and determines if an error status is present.
-    Returns True if an error was found (restart required), otherwise False.
+    Checks each URL in the config, logs redirects and timeouts.
+    Returns a list of URLs that failed their checks.
     """
-    urls = config.get('checks', {}).get('urls', [])
+    mapping = config.get('checks', {}).get('mapping', {})
     error_codes = config.get('checks', {}).get('error_status_codes', [])
     timeout = config.get('checks', {}).get('timeout', 5)
 
-    for url in urls:
-        log(f"[INFO] Checking {url} with timeout {timeout}s...")
+    failed = []
+    for url, container_name in mapping.items():
+        log(f"[INFO] Checking {url} -> '{container_name}' with timeout {timeout}s...")
         try:
             resp = requests.head(url, timeout=timeout, allow_redirects=True)
-        except requests.exceptions.Timeout as e:
-            log(f"[WARN] Timeout after {timeout}s waiting for {url}. Beginning countdown to failure.")
+        except requests.exceptions.Timeout:
+            log(f"[WARN] Timeout after {timeout}s waiting for {url}. Countdown to failure...")
             for remaining in range(timeout, 0, -1):
                 log(f"[WARN] {remaining}s left before marking {url} as failed...")
                 time.sleep(1)
             log(f"[ERROR] No response from {url} after timeout and countdown.")
-            return True
+            failed.append(container_name)
+            continue
         except requests.RequestException as e:
             log(f"[ERROR] {url} could not be reached: {e}")
-            return True
+            failed.append(container_name)
+            continue
 
-        # Log any redirects
+        # Log redirects
         for hist in resp.history:
             location = hist.headers.get('Location', '<unknown>')
-            log(f"[INFO] Redirect: {hist.status_code} {hist.url} -> {location}")
-        # Final response
+            log(f"[INFO] Redirect for '{container_name}': {hist.status_code} {hist.url} -> {location}")
+
         status = resp.status_code
-        log(f"[OK] Final URL: {resp.url} returned status code {status}")
+        log(f"[OK] Final URL for '{container_name}': {resp.url} returned status code {status}")
 
         if status in error_codes:
             log(f"[ERROR] {resp.url} returned error code {status}")
-            return True
+            failed.append(container_name)
 
-    return False
+    return failed
 
 if __name__ == "__main__":
     cfg = load_config()
@@ -110,9 +114,11 @@ if __name__ == "__main__":
 
     while True:
         log("[INFO] Checking configured URLs...")
-        if check_sites(cfg):
-            log("[ERROR] Error detected in health checks. Proceeding to restart...")
-            restart_container(cfg)
+        failed_containers = check_sites(cfg)
+        if failed_containers:
+            for container in failed_containers:
+                log(f"[ERROR] Error detected for container '{container}'. Restarting...")
+                restart_container(cfg, container)
         else:
             log("[OK] All URLs OK. No restart required.")
 

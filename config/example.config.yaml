@@ -1,30 +1,28 @@
 # This is an example configuration file for the Container Watchdog script.
-# Make sure to replace the placeholders with your actual values.
+# Map each URL to the container you want restarted on failure.
 
 portainer:
-  url: "https://your-portainer-url.com" # Replace with your Portainer URL; if restarting a reverse proxy container Portainer uses, use local IP to avoid error 520
-  api_key: "your_api_key_here" # Replace with your Portainer API key
-  endpoint_id: 1 # Replace with your Portainer endpoint ID
-
-container:
-  name: "your-container-name" # Name or ID of the Docker container to restart
+  url: "https://your-portainer-url.com" # Your Portainer API endpoint
+  api_key: "your_api_key_here" # Your Portainer API key
+  endpoint_id: 1 # The ID of the Docker endpoint in Portainer
 
 checks:
-  urls:
-    - "https://urls-to-check.com"
-    - "https://you-can-add-multiple.com"
-  # All HTTP status codes listed here will trigger a restart of the container
+  # Map each URL to its container name
+  mapping:
+    "https://first-container.com": "first-container"
+    "https://second-container.com": "second-container"
+  # All HTTP status codes listed here will trigger a container restart
   error_status_codes:
     - 502
     - 503
     - 504
-  # Timeout for each health check in seconds
-  timeout: 10
+  # Timeout in seconds when waiting for each request
+  timeout: 5
 
 restart:
   # Behavior: "restart" = direct API restart, "stop_start" = stop → delay → start
   behavior: "stop_start"
-  # Delay in seconds between stop and start (only for stop_start mode)
+  # Delay in seconds between stop and start (only for stop_start)
   delay: 10
 
 interval:
