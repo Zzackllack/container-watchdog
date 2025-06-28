@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    working_dir: /app
     volumes:
       - ./config/config.yaml:/app/config/config.yaml:ro
     # Restart the watchdog container automatically if it crashes
