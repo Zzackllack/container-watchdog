@@ -8,11 +8,16 @@ def authenticate_checkmate(config):
     Authenticate with Checkmate and return a JWT auth token.
     """
     url = f"{config['checkmate']['api_url']}/auth/login"
+    log(f"[INFO] Authenticating with Checkmate API at {url}...")
     payload = {
         'email': config['checkmate']['email'],
         'password': config['checkmate']['password']
     }
     resp = requests.post(url, json=payload, timeout=config['checkmate']['timeout'])
+    if resp.status_code == 200:
+        log("[OK] Successfully authenticated with Checkmate.")
+    else:
+        log(f"[ERROR] Authentication failed with status code {resp.status_code}: {resp.text}")
     resp.raise_for_status()
     token = resp.json().get('data', {}).get('token')
     if not token:
@@ -156,6 +161,16 @@ if __name__ == "__main__":
                 restart_container(cfg, container)
         else:
             log("[OK] All URLs OK. No restart required.")
+
+        # Checkmate monitors
+        log("[INFO] Checking Checkmate monitors...")
+        cm_failed = check_checkmate(cfg)
+        if cm_failed:
+            for container in cm_failed:
+                log(f"[ERROR] Checkmate reports monitor down for '{container}'. Restarting...")
+                restart_container(cfg, container)
+        else:
+            log("[OK] All Checkmate monitors OK. No restart required for Checkmate.")
 
         log(f"[INFO] Sleeping for {interval} seconds before next check.")
         time.sleep(interval)
