@@ -3,6 +3,23 @@ import requests
 import yaml
 from pathlib import Path
 
+def authenticate_checkmate(config):
+    """
+    Authenticate with Checkmate and return a JWT auth token.
+    """
+    url = f"{config['checkmate']['api_url']}/auth/login"
+    payload = {
+        'email': config['checkmate']['email'],
+        'password': config['checkmate']['password']
+    }
+    resp = requests.post(url, json=payload, timeout=config['checkmate']['timeout'])
+    resp.raise_for_status()
+    token = resp.json().get('data', {}).get('token')
+    if not token:
+        log("[ERROR] No token received from Checkmate")
+        raise RuntimeError("Failed to get auth token from Checkmate")
+    return token
+
 def load_config(path=None):
     """
     Loads the configuration from a YAML file next to the project root,
@@ -103,6 +120,24 @@ def check_sites(config):
             log(f"[ERROR] {resp.url} returned error code {status}")
             failed.append(container_name)
 
+    return failed
+
+def check_checkmate(config):
+    """
+    Checks monitor status via Checkmate API and returns a list of container names for down monitors.
+    """
+    token = authenticate_checkmate(config)
+    headers = {'Authorization': f"Bearer {token}"}
+    url = f"{config['checkmate']['api_url']}/api/v1/monitors"
+    resp = requests.get(url, headers=headers, timeout=config['checkmate']['timeout'])
+    resp.raise_for_status()
+    monitors = resp.json().get('data', [])
+    failed = []
+    for monitor in monitors:
+        if monitor.get('status') is False:
+            container = config['checkmate']['mapping'].get(monitor.get('_id'))
+            if container:
+                failed.append(container)
     return failed
 
 if __name__ == "__main__":
