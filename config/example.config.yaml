@@ -28,3 +28,19 @@ restart:
 interval:
   # Frequency of health checks in seconds
   seconds: 300
+
+# Checkmate API configuration a container will be restarted if Checkmates API reports it as down
+checkmate:
+  # This is your url where you host Checkmate, use the base URL without /api/v1 or trailing slash
+  api_url: "https://checkmate.yourdomain.com"
+  # Your Checkmate account email, used for authentication
+  email: "youremail@domain.com"
+  # Your Checkmate account password, used for authentication
+  password: "your_password_here"
+  # Timeout in seconds for Checkmate API requests
+  timeout: 10
+  # Mapping of Checkmate monitor IDs to Portainer container names
+  mapping:
+    # Monitor-ID from Checkmate, you can find this if you open a monitor in Checkmate and look at the URL
+    # Example: https://checkmate.yourdomain.com/uptime/some_monitor_id : The container name in Portainer
+    "your_monitor_id": "container-name-in-portainer"

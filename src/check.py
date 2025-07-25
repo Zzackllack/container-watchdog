@@ -7,7 +7,7 @@ def authenticate_checkmate(config):
     """
     Authenticate with Checkmate and return a JWT auth token.
     """
-    url = f"{config['checkmate']['api_url']}/auth/login"
+    url = f"{config['checkmate']['api_url']}/api/v1/auth/login"
     log(f"[INFO] Authenticating with Checkmate API at {url}...")
     payload = {
         'email': config['checkmate']['email'],
