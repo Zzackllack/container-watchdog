@@ -53,13 +53,18 @@ def restart_container(config, container_name):
     endpoint_id = config['portainer']['endpoint_id']
     behavior    = config.get('restart', {}).get('behavior', 'restart')
     delay       = config.get('restart', {}).get('delay', 5)
+    pt_timeout  = config['portainer'].get('timeout', 10)
 
     headers = {'X-API-Key': api_key}
 
     if behavior == 'stop_start':
         log(f"[INFO] Stopping container '{container_name}' via API...")
         url_stop = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container_name}/stop"
-        r1 = requests.post(url_stop, headers=headers)
+        try:
+            r1 = requests.post(url_stop, headers=headers, timeout=pt_timeout)
+        except requests.RequestException as e:
+            log(f"[ERROR] Failed to stop container '{container_name}': {e}")
+            return
         log(f"[INFO] Stop response for '{container_name}': {r1.status_code}")
 
         log(f"[INFO] Waiting {delay}s before starting container '{container_name}'...")
@@ -67,7 +72,11 @@ def restart_container(config, container_name):
 
         log(f"[INFO] Starting container '{container_name}' via API...")
         url_start = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container_name}/start"
-        r2 = requests.post(url_start, headers=headers)
+        try:
+            r2 = requests.post(url_start, headers=headers, timeout=pt_timeout)
+        except requests.RequestException as e:
+            log(f"[ERROR] Failed to start container '{container_name}': {e}")
+            return
         log(f"[INFO] Start response for '{container_name}': {r2.status_code}")
 
         if r1.status_code < 300 and r2.status_code < 300:
@@ -80,7 +89,11 @@ def restart_container(config, container_name):
     else:
         log(f"[INFO] Restarting container '{container_name}' via API...")
         url = f"{api_url}/api/endpoints/{endpoint_id}/docker/containers/{container_name}/restart"
-        r = requests.post(url, headers=headers)
+        try:
+            r = requests.post(url, headers=headers, timeout=pt_timeout)
+        except requests.RequestException as e:
+            log(f"[ERROR] Failed to restart container '{container_name}': {e}")
+            return
         log(f"[INFO] Restart response for '{container_name}': {r.status_code}")
 
         if r.status_code < 300:

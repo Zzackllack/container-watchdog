@@ -5,6 +5,7 @@ portainer:
   url: "https://your-portainer-url.com" # Your Portainer API endpoint
   api_key: "your_api_key_here" # Your Portainer API key
   endpoint_id: 1 # The ID of the Docker endpoint in Portainer
+  timeout: 10 # Timeout in seconds for Portainer API requests
 
 checks:
   # Map each URL to its container name
