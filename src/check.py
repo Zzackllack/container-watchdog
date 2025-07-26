@@ -70,10 +70,12 @@ def restart_container(config, container_name):
         r2 = requests.post(url_start, headers=headers)
         log(f"[INFO] Start response for '{container_name}': {r2.status_code}")
 
-        if r1.status_code in (204, 304) and r2.status_code in (204, 304):
+        if r1.status_code < 300 and r2.status_code < 300:
             log(f"[INFO] Container '{container_name}' restarted successfully via stop/start.")
         else:
-            log(f"[ERROR] Stop/start failed for '{container_name}': stop={r1.status_code}, start={r2.status_code}")
+            log(f"[ERROR] Stop/start returned non-2xx codes for '{container_name}': stop={r1.status_code}, start={r2.status_code}")
+            log(f"[DEBUG] Stop response body: {r1.text}")
+            log(f"[DEBUG] Start response body: {r2.text}")
 
     else:
         log(f"[INFO] Restarting container '{container_name}' via API...")
@@ -81,10 +83,11 @@ def restart_container(config, container_name):
         r = requests.post(url, headers=headers)
         log(f"[INFO] Restart response for '{container_name}': {r.status_code}")
 
-        if r.status_code == 204:
+        if r.status_code < 300:
             log(f"[INFO] Container '{container_name}' restarted successfully.")
         else:
-            log(f"[ERROR] Restart failed for '{container_name}': {r.status_code} {r.text}")
+            log(f"[ERROR] Restart failed for '{container_name}': {r.status_code}")
+            log(f"[DEBUG] Restart response body: {r.text}")
 
 def check_sites(config):
     """
